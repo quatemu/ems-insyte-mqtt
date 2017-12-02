@@ -2,15 +2,18 @@ package com.insyte.ems.utils.mqtt;
 
 import io.netty.handler.codec.mqtt.MqttQoS;
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.mqtt.MqttEndpoint;
 import io.vertx.mqtt.MqttServer;
 import io.vertx.mqtt.MqttTopicSubscription;
-
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MqttVerticle extends AbstractVerticle {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MqttVerticle.class);
+
     @Override
     public void start() throws Exception {
         startMqttServer();
