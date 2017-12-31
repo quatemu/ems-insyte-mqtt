@@ -6,27 +6,27 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.mqtt.MqttClient;
 import io.vertx.mqtt.MqttClientOptions;
 
-import java.io.UnsupportedEncodingException;
+public class MqttClientVerticle extends AbstractVerticle {
 
-public class MqttClientTest extends AbstractVerticle {
-
-    private static final String MQTT_TOPIC = "/my_topic";
-    private static final String MQTT_MESSAGE = "Hello Vert.x MQTT Client";
+    private static final String MQTT_TOPIC = "/variables/#";
+    private static final String MQTT_MESSAGE = "Hello from Vert.x MQTT Client";
     private static final String BROKER_HOST = "localhost";
     private static final int BROKER_PORT = 1883;
 
     @Override
     public void start() {
         MqttClientOptions options = new MqttClientOptions();
+        options.setPassword("pas");
+        options.setUsername("log");
         // specify broker host
         //options.setHost("iot.eclipse.org");
-        options.setHostnameVerificationAlgorithm("iot.eclipse.org");
+        //options.setHostnameVerificationAlgorithm("iot.eclipse.org");
         // specify max size of message in bytes
         options.setMaxMessageSize(100_000_000);
 
         MqttClient client = MqttClient.create(vertx, options);
 
-        client.connect(BROKER_PORT, BROKER_HOST,ch -> {
+        client.connect(BROKER_PORT, BROKER_HOST, ch -> {
             if (ch.succeeded()) {
                 System.out.println("Connected to a server");
 
@@ -37,6 +37,8 @@ public class MqttClientTest extends AbstractVerticle {
                         false,
                         false,
                         s -> client.disconnect(d -> System.out.println("Disconnected from server")));
+
+                client.subscribe("#", 0);
             } else {
                 System.out.println("Failed to connect to a server");
                 System.out.println(ch.cause());

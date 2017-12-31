@@ -7,12 +7,17 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.mqtt.MqttEndpoint;
 import io.vertx.mqtt.MqttServer;
 import io.vertx.mqtt.MqttTopicSubscription;
+import org.apache.camel.Suspendable;
+
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MqttVerticle extends AbstractVerticle {
+    private enum MessageType { PUBLISH, SUBSCRIBE }
+
     private static final Logger LOGGER = LoggerFactory.getLogger(MqttVerticle.class);
+
 
     @Override
     public void start() throws Exception {
@@ -22,11 +27,28 @@ public class MqttVerticle extends AbstractVerticle {
     private void startMqttServer(){
         MqttServer mqttServer = MqttServer.create(vertx);
         mqttServer.endpointHandler(endpoint -> {
-            // shows main connect info
-            System.out.println("MQTT client [" + endpoint.clientIdentifier() + "] request to connect, clean session = " + endpoint.isCleanSession());
-
             if (endpoint.auth() != null) {
-                System.out.println("[username = " + endpoint.auth().userName() + ", password = " + endpoint.auth().password() + "]");
+                if(isValidUser(endpoint.auth().userName(), endpoint.auth().password())) {
+
+                    endpoint.publishHandler(message -> {
+                        processingIncomingMessage(MessageType.PUBLISH, message.topicName(), message.payload().toString(Charset.defaultCharset()));
+                        System.out.println("Just received message [" + message.payload().toString(Charset.defaultCharset()) + "] with QoS [" + message.qosLevel() + "]");
+                        if (message.qosLevel() == MqttQoS.AT_LEAST_ONCE) {
+                            endpoint.publishAcknowledge(message.messageId());
+                        } else if (message.qosLevel() == MqttQoS.EXACTLY_ONCE) {
+                            endpoint.publishRelease(message.messageId());
+                        }
+
+                    }).publishReleaseHandler(messageId -> {
+                        endpoint.publishComplete(messageId);
+                    });
+                }
+                else{
+                    endpoint.close();
+                }
+            }
+            else{
+                endpoint.close();
             }
             if (endpoint.will() != null) {
                 System.out.println("[will topic = " + endpoint.will().willTopic() + " msg = " + endpoint.will().willMessage() +
@@ -41,12 +63,57 @@ public class MqttVerticle extends AbstractVerticle {
         })
             .listen(ar -> {
                 if (ar.succeeded()) {
-                    System.out.println("MQTT server is listening on port " + ar.result().actualPort());
+                    LOGGER.info("MQTT server is listening on port " + ar.result().actualPort());
                 } else {
-                    System.out.println("Error on starting the server");
-                    ar.cause().printStackTrace();
+                    LOGGER.trace("Error on starting the server: " + ar.cause());
                 }
             });
+    }
+
+    private boolean isValidUser(String login, String password){
+        return login.equals("log") && password.equals("pas");
+    }
+
+    private void processingIncomingMessage(MessageType messageType, String topicName, String body){
+        if(topicName.equals("/variables/#")){
+            if(messageType == MessageType.PUBLISH){
+
+            }else if(messageType == MessageType.SUBSCRIBE){
+
+            }
+        } else if(topicName.startsWith("/variables/")){
+            String variableName = topicName.replace("/variables/", "");
+            System.out.println(variableName);
+            if(messageType == MessageType.PUBLISH){
+
+            }else if(messageType == MessageType.SUBSCRIBE){
+
+            }
+        }
+
+//
+//        switch (topicName){
+//            case "/attributes/#":
+//                break;
+//
+//            case "/attributes/name":
+//                break;
+//
+//            case "/attributes/devid":
+//                break;
+//
+//            case "/attributes/typeid":
+//                break;
+//
+//            case "/attributes/server":
+//                break;
+//
+//            case "/attributes/variables/#":
+//                break;
+//
+//            case "/variables/":
+//                break;
+//        }
     }
 
     private void addHandlers(MqttEndpoint endpoint){
@@ -54,17 +121,6 @@ public class MqttVerticle extends AbstractVerticle {
             System.out.println("Received disconnect from client");
         });
 
-        endpoint.publishHandler(message -> {
-            System.out.println("Just received message [" + message.payload().toString(Charset.defaultCharset()) + "] with QoS [" + message.qosLevel() + "]");
-            if (message.qosLevel() == MqttQoS.AT_LEAST_ONCE) {
-                endpoint.publishAcknowledge(message.messageId());
-            } else if (message.qosLevel() == MqttQoS.EXACTLY_ONCE) {
-                endpoint.publishRelease(message.messageId());
-            }
-
-        }).publishReleaseHandler(messageId -> {
-            endpoint.publishComplete(messageId);
-        });
 
         endpoint.subscribeHandler(subscribe -> {
             List<MqttQoS> grantedQosLevels = new ArrayList<>();
